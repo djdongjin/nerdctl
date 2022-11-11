@@ -17,12 +17,17 @@
 package main
 
 import (
+	"bytes"
 	"context"
+	"os"
 	"time"
 
 	"github.com/containerd/containerd"
+	"github.com/containerd/nerdctl/pkg/buildkitutil"
 	"github.com/containerd/nerdctl/pkg/labels"
 	"github.com/containerd/nerdctl/pkg/netutil"
+	"github.com/moby/buildkit/frontend/dockerfile/instructions"
+	"github.com/moby/buildkit/frontend/dockerfile/parser"
 	"github.com/spf13/cobra"
 )
 
@@ -146,4 +151,25 @@ func shellCompletePlatforms(cmd *cobra.Command, args []string, toComplete string
 		"linux/arm/v6", // "arm/v6" is invalid (interpreted as OS="arm", Arch="v7")
 	}
 	return candidates, cobra.ShellCompDirectiveNoFileComp
+}
+
+func shellCompleteDockerfile(cmd *cobra.Command) ([]string, cobra.ShellCompDirective) {
+	filename := buildkitutil.DefaultDockerfileName
+	if df, err := cmd.Flags().GetString("file"); err == nil && df != "" {
+		filename = df
+	}
+
+	df, err := os.ReadFile(filename)
+	if err != nil {
+		return nil, cobra.ShellCompDirectiveError
+	}
+	ast, err := parser.Parse(bytes.NewBuffer(df))
+	stages, _, err := instructions.Parse(ast.AST)
+
+	candidates := []string{}
+	for _, stage := range stages {
+		candidates = append(candidates, stage.Name)
+	}
+
+	return nil, cobra.ShellCompDirectiveNoFileComp
 }
