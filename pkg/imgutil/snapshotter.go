@@ -19,6 +19,7 @@ package imgutil
 import (
 	"strings"
 
+	socisource "github.com/awslabs/soci-snapshotter/fs/source"
 	"github.com/containerd/containerd"
 	"github.com/containerd/containerd/snapshots"
 	"github.com/containerd/nerdctl/pkg/imgutil/pull"
@@ -31,6 +32,7 @@ const (
 	snapshotterNameOverlaybd = "overlaybd"
 	snapshotterNameStargz    = "stargz"
 	snapshotterNameNydus     = "nydus"
+	snapshotterNameSoci      = "soci"
 
 	// prefetch size for stargz
 	prefetchSize = 10 * 1024 * 1024
@@ -43,6 +45,7 @@ var builtinRemoteSnapshotterOpts = map[string]snapshotterOpts{
 	snapshotterNameOverlaybd: &overlaybdSnapshotterOpts{},
 	snapshotterNameStargz:    &stargzSnapshotterOpts{},
 	snapshotterNameNydus:     &nydusSnapshotterOpts{},
+	snapshotterNameSoci:      &sociSnapshotterOpts{},
 }
 
 // snapshotterOpts is used to update pull config
@@ -130,5 +133,23 @@ func (nsn *nydusSnapshotterOpts) apply(config *pull.Config, ref string) {
 		config.RemoteOpts,
 		containerd.WithImageHandlerWrapper(nyduslabel.AppendLabelsHandlerWrapper(ref)),
 		containerd.WithPullSnapshotter(snapshotterNameNydus),
+	)
+}
+
+// sociSnapshotterOpts for soci snapshotter
+// TODO(djdongjin): check what happens if multiple platform is given.
+// TODO(djdongjin): check if containerd.WithPullUnpack needs (in mult-platfomr case)
+// TODO(djdongjin): check how to pass soci-index-digest down to
+type sociSnapshotterOpts struct {
+	remoteSnapshotter
+}
+
+func (socisn *sociSnapshotterOpts) apply(config *pull.Config, ref string) {
+	indexDigest := ""
+	config.RemoteOpts = append(
+		config.RemoteOpts,
+		containerd.WithImageHandlerWrapper(source.AppendDefaultLabelsHandlerWrapper(ref, prefetchSize)),
+		containerd.WithPullSnapshotter(snapshotterNameSoci),
+		containerd.WithImageHandlerWrapper(socisource.AppendDefaultLabelsHandlerWrapper(ref, indexDigest)),
 	)
 }

@@ -48,7 +48,7 @@ type EnsuredImage struct {
 	Image       containerd.Image
 	ImageConfig ocispec.ImageConfig
 	Snapshotter string
-	Remote      bool // true for stargz or overlaybd
+	Remote      bool // true for stargz, overlaybd or soci snapshotters
 }
 
 var (
@@ -222,6 +222,7 @@ func PullImage(ctx context.Context, client *containerd.Client, stdout, stderr io
 			return nil, fmt.Errorf("unpacking requires a single platform to be specified (e.g., --platform=amd64)")
 		}
 	} else {
+		// TODO(djdongjin): check if this will impact soci snapshotter
 		unpackB = len(ocispecPlatforms) == 1
 	}
 
@@ -414,7 +415,7 @@ func ParseFilters(filters []string) ([]string, []string, error) {
 	return beforeFilters, sinceFilters, nil
 }
 
-func FilterImages(labelImages []images.Image, beforeImages []images.Image, sinceImages []images.Image) []images.Image {
+func FilterImages(labelImages, beforeImages, sinceImages []images.Image) []images.Image {
 
 	var filteredImages []images.Image
 	maxTime := time.Now()
