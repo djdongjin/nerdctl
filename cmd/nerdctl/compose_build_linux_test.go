@@ -54,6 +54,8 @@ services:
 	defer base.Cmd("rmi", imageSvc0).Run()
 	defer base.Cmd("rmi", imageSvc1).Run()
 
+	t.Logf("compose version: %s", base.ComposeCmd("version").Run().Combined())
+
 	// 1. build only 1 service
 	base.ComposeCmd("-f", comp.YAMLFullPath(), "build", "svc0").AssertOK()
 	base.Cmd("images").AssertOutContains(imageSvc0)
