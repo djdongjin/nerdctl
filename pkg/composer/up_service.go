@@ -144,6 +144,10 @@ func (c *Composer) upServiceContainer(ctx context.Context, service *serviceparse
 		container.RunArgs = append([]string{"-d"}, container.RunArgs...)
 	}
 
+	if service.Unparsed.Tty {
+		container.RunArgs = append([]string{"-t"}, container.RunArgs...)
+	}
+
 	//add metadata labels to container https://github.com/compose-spec/compose-spec/blob/master/spec.md#labels
 	container.RunArgs = append([]string{
 		"--cidfile=" + cidFilename,
@@ -154,11 +158,6 @@ func (c *Composer) upServiceContainer(ctx context.Context, service *serviceparse
 	cmd := c.createNerdctlCmd(ctx, append([]string{"run"}, container.RunArgs...)...)
 	if c.DebugPrintFull {
 		logrus.Debugf("Running %v", cmd.Args)
-	}
-
-	// FIXME
-	if service.Unparsed.StdinOpen != service.Unparsed.Tty {
-		return "", fmt.Errorf("currently StdinOpen(-i) and Tty(-t) should be same")
 	}
 
 	if service.Unparsed.StdinOpen {

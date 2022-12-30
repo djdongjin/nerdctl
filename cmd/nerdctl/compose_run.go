@@ -49,6 +49,7 @@ func newComposeRunCommand() *cobra.Command {
 	//       In docker-compose's documentation, no-TTY is automatically detected
 	//       But, it follows `-i` flag because currently `run` command needs `-it` simultaneously.
 	composeRunCommand.Flags().BoolP("interactive", "i", true, "Keep STDIN open even if not attached")
+	composeRunCommand.Flags().BoolP("tty", "t", true, "Allocate a pseudo-TTY")
 	composeRunCommand.Flags().Bool("rm", false, "Automatically remove the container when it exits")
 	composeRunCommand.Flags().StringP("user", "u", "", "Username or UID (format: <name|uid>[:<group|gid>])")
 	composeRunCommand.Flags().StringArrayP("volume", "v", nil, "Bind mount a volume")
@@ -111,8 +112,11 @@ func composeRunAction(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	// FIXME : https://github.com/containerd/nerdctl/blob/v0.22.2/cmd/nerdctl/run.go#L100
-	tty := interactive
+	tty, err := cmd.Flags().GetBool("tty")
+	if err != nil {
+		return err
+	}
+
 	rm, err := cmd.Flags().GetBool("rm")
 	if err != nil {
 		return err
@@ -156,11 +160,6 @@ func composeRunAction(cmd *cobra.Command, args []string) error {
 	// https://github.com/containerd/nerdctl/blob/v0.22.2/cmd/nerdctl/run.go#L475
 	if interactive && detach {
 		return errors.New("currently flag -i and -d cannot be specified together (FIXME)")
-	}
-
-	// https://github.com/containerd/nerdctl/blob/v0.22.2/cmd/nerdctl/run.go#L479
-	if tty && detach {
-		return errors.New("currently flag -t and -d cannot be specified together (FIXME)")
 	}
 
 	client, ctx, cancel, err := newClient(cmd)

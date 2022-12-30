@@ -497,3 +497,35 @@ services:
 	base.ComposeCmd("-f", comp.YAMLFullPath(), "up", "svc1").AssertFail() // key mismatch
 	base.ComposeCmd("-f", comp.YAMLFullPath(), "up", "svc2").AssertOK()   // verify passed
 }
+
+func TestComposeRunTTY(t *testing.T) {
+	// `-i` in `compose run & exec` is only supported in compose v2.
+	// Currently CI is using compose v1.
+	testutil.DockerIncompatible(t)
+	base := testutil.NewBase(t)
+	if testutil.GetTarget() == testutil.Nerdctl {
+		testutil.RequireDaemonVersion(base, ">= 1.6.0-0")
+	}
+
+	var dockerComposeYAML = fmt.Sprintf(`
+version: '3.1'
+
+services:
+  svc0:
+    image: %s
+`, testutil.CommonImage)
+
+	comp := testutil.NewComposeDir(t, dockerComposeYAML)
+	defer comp.CleanUp()
+	projectName := comp.ProjectName()
+	t.Logf("projectName=%q", projectName)
+
+	const sttyPartialOutput = "speed 38400 baud"
+	// unbuffer(1) emulates tty, which is required by `nerdctl run -t`.
+	// unbuffer(1) can be installed with `apt-get install expect`.
+	unbuffer := []string{"unbuffer"}
+	base.ComposeCmdWithHelper(unbuffer, "--debug-full", "-f", comp.YAMLFullPath(), "run", "svc0", "stty").AssertOutContains(sttyPartialOutput) // `-it`
+	// base.ComposeCmdWithHelper(unbuffer, "-f", comp.YAMLFullPath(), "run", "-i=false", "svc0", "stty").AssertOutContains(sttyPartialOutput) // `-t`
+	base.ComposeCmdWithHelper(unbuffer, "--debug-full", "-f", comp.YAMLFullPath(), "run", "-t=false", "svc0", "stty").AssertFail() // `-i`
+	base.ComposeCmdWithHelper(unbuffer, "--debug-full", "-f", comp.YAMLFullPath(), "run", "-i=false", "-t=false", "svc0", "stty").AssertFail()
+}
